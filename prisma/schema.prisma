@@ -1,0 +1,180 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  expires      DateTime
+  sessionToken String   @unique
+  accessToken  String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?
+  phone         String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  role          Role      @default(CHEF)
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationRequest {
+  id         String   @id @default(cuid())
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, token])
+}
+
+model Table {
+  id             String     @id @default(cuid())
+  name           String     @unique
+  capacity       Int?       @default(0)
+  priceperperson Int?       @default(199)
+  statusID       Int   
+  status         Status     @relation(fields: [statusID], references: [id])
+  order          Order[]
+  bill           Bill[]
+  cart           Cart[]
+  chefPage       ChefPage[]
+  createdAt      DateTime   @default(now())
+}
+
+model Status {
+  id    Int    @id @default(autoincrement())
+  name  String @unique@default("IDLE")
+  table Table[]
+}
+
+model Menu {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  price      Float?   @default(0)
+  categoryID Int
+  category   Category @relation(fields: [categoryID], references: [id])
+  cart       Cart[]
+  order      Order[]
+}
+
+// enum Category {
+//   FOOD
+//   DRINK
+//   DESSERT
+// }
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Menu[]
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  quantity  Int
+  tableID   String
+  table     Table    @relation(fields: [tableID], references: [id], onDelete: Cascade)
+  cartID    Int
+  cart      Cart     @relation(fields: [cartID], references: [id], onDelete: Cascade)
+  menuID    Int
+  menu      Menu     @relation(fields: [menuID], references: [id], onDelete: Cascade)
+  status    String?  @default("pending..")
+  chefPage  ChefPage[]
+  createdAt DateTime @default(now())
+}
+
+model Cart {
+  id       Int     @id @default(autoincrement())
+  quantity Int
+  tableID  String
+  table    Table   @relation(fields: [tableID], references: [id], onDelete: Cascade)
+  menuID   Int
+  menu     Menu    @relation(fields: [menuID], references: [id], onDelete: Cascade)
+  status   String? @default("waiting to send..")
+  order    Order[]
+}
+
+model Bill {
+  id        Int     @id @default(autoincrement())
+  guest     Guest[]
+  tableID   String     
+  total     Float
+  people    Int
+  status    BillStatus @default(PAID)
+  table     Table      @relation(fields: [tableID], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+}
+
+model Guest {
+  id      String   @id @default(cuid())
+  start   DateTime
+  end     DateTime
+  bill    Bill     @relation(fields: [billID], references: [id], onDelete: Cascade)
+  billID  Int  
+}
+
+model ChefPage {
+  id        Int  @id @default(autoincrement())
+  quantity  Int
+  menu      String 
+  status    String? @default("served")
+  order     Order @relation(fields: [orderID], references: [id], onDelete: Cascade)
+  orderID   Int
+  tableID   String
+  table     Table @relation(fields: [tableID], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+}
+
+model quantity {
+  id       Int @id @default(autoincrement())
+  quantity Int @default(0)
+}
+
+enum Role {
+  MANAGER
+  CHEF
+  WAITER
+  CASHIER
+}
+
+enum BillStatus {
+  PAID
+  UNPAID
+}
+
